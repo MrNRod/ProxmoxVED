@@ -16,7 +16,7 @@ update_os
 msg_info "Installing Dependencies"
 $STD apt install -y \
   git \
-  caddy
+  nginx
 msg_ok "Installed Dependencies"
 
 # 3.11, not 3.12: mwa2's pkgsinfo_extras templatetag still imports distutils,
@@ -158,7 +158,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/munkiwebadmin
-ExecStart=/opt/munkiwebadmin/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8090 munkiwebadmin.wsgi:application
+ExecStart=/opt/munkiwebadmin/.venv/bin/gunicorn --workers 2 --timeout 600 --bind 127.0.0.1:8090 munkiwebadmin.wsgi:application
 Restart=on-failure
 RestartSec=5
 
@@ -168,54 +168,63 @@ EOF
 systemctl enable -q --now munkiwebadmin
 msg_ok "Created Service"
 
-msg_info "Configuring Caddy"
-cat <<'EOF' >/etc/caddy/Caddyfile
-:80 {
-    redir /repo /repo/ permanent
+msg_info "Configuring Nginx"
+cat <<'EOF' >/etc/nginx/sites-available/munki-repo.conf
+server {
+  listen 80 default_server;
+  server_name _;
 
-    handle /repo/* {
-        root * /srv/munki_repo
-        uri strip_prefix /repo
-        file_server
-    }
+  location = / {
+    default_type text/plain;
+    return 200 "Munki repo. Point ManagedInstalls SoftwareRepoURL at http://<this-ip>/repo\nWeb admin: http://<this-ip>:8081/\n";
+  }
 
-    handle / {
-        header Content-Type "text/plain"
-        respond `Munki repo. Point ManagedInstalls SoftwareRepoURL at http://<this-ip>/repo
-Web admin: http://<this-ip>:8081/
-` 200
-    }
+  location = /repo {
+    return 301 /repo/;
+  }
+
+  location /repo/ {
+    alias /srv/munki_repo/;
+  }
 }
 
-:8081 {
-    request_body {
-        max_size 200MB
-    }
+server {
+  listen 8081 default_server;
+  server_name _;
 
-    handle /static/* {
-        root * /opt/munkiwebadmin/munkiwebadmin/collected_static
-        uri strip_prefix /static
-        file_server
-    }
+  client_max_body_size 200M;
 
-    handle /media/* {
-        root * /srv/munki_repo/icons
-        uri strip_prefix /media
-        file_server
-    }
+  location /static/ {
+    alias /opt/munkiwebadmin/munkiwebadmin/collected_static/;
+  }
 
-    handle {
-        reverse_proxy 127.0.0.1:8090
-    }
+  location /media/ {
+    alias /srv/munki_repo/icons/;
+  }
+
+  location / {
+    proxy_pass http://127.0.0.1:8090;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # mwa2's "Rebuild catalogs" view blocks synchronously in-request until
+    # makecatalogs exits, with no streaming; nginx's 60s default read timeout
+    # would otherwise cut the connection mid-rebuild (matches gunicorn's own
+    # --timeout 600 in munkiwebadmin.service).
+    proxy_connect_timeout 300s;
+    proxy_send_timeout 600s;
+    proxy_read_timeout 600s;
+  }
 }
 EOF
-$STD caddy fmt --overwrite /etc/caddy/Caddyfile
-$STD caddy validate \
-  --config /etc/caddy/Caddyfile \
-  --adapter caddyfile
-systemctl enable -q caddy
-systemctl restart caddy
-msg_ok "Configured Caddy"
+ln -sf /etc/nginx/sites-available/munki-repo.conf /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+$STD nginx -t
+systemctl enable -q --now nginx
+systemctl reload nginx
+msg_ok "Configured Nginx"
 
 motd_ssh
 customize
