@@ -1,0 +1,54 @@
+{
+  "name": "Munki Repo",
+  "slug": "munki-repo",
+  "categories": [
+    9
+  ],
+  "date_created": "2026-08-10",
+  "type": "ct",
+  "updateable": true,
+  "privileged": false,
+  "architectures": ["amd64", "arm64"],
+  "interface_port": 8081,
+  "documentation": "https://github.com/munki/munki/wiki",
+  "website": "https://www.munki.org/munki/",
+  "repository": "https://github.com/munki/munki",
+  "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/munki.webp",
+  "description": "Munki is an open-source software deployment tool for macOS. This installs a self-hosted Munki package repository (pkgs/pkgsinfo/catalogs/manifests) served over HTTP, plus MunkiWebAdmin2 for editing manifests and pkginfo and rebuilding catalogs from a browser. Munki's own Managed Software Center gives macOS users a self-service app catalog, so it pairs well with a free-tier MDM like Fleet (whose Software/app-catalog features are Premium-only) for enrollment, inventory, and policy while Munki handles software distribution.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/munki-repo.sh",
+      "config_path": "/opt/munkiwebadmin/munkiwebadmin/settings.py",
+      "resources": {
+        "cpu": 2,
+        "ram": 1024,
+        "hdd": 8,
+        "os": "Debian",
+        "version": "13"
+      }
+    }
+  ],
+  "default_credentials": {
+    "username": "admin",
+    "password": "Generated during installation"
+  },
+  "notes": [
+    {
+      "text": "The repo (http://<IP>/repo) and MunkiWebAdmin2 (http://<IP>:8081) are served over plain HTTP with no client authentication by default. Put a TLS reverse proxy in front for production use, especially over untrusted networks.",
+      "type": "warning"
+    },
+    {
+      "text": "There is no macOS admin tool bundled here. Add packages with munkiimport or MunkiAdmin from a Mac (point it at /srv/munki_repo over rsync/scp/sshfs), or add script-only/nopkg pkginfo directly in MunkiWebAdmin2, then use its \"Rebuild catalogs\" action.",
+      "type": "info"
+    },
+    {
+      "text": "\"Rebuild catalogs\" runs a Linux-compatible build of munki's official makecatalogs logic (vendored from github.com/munki/munki, Apache-2.0) since the real makecatalogs is a macOS-only binary as of Munki 6+.",
+      "type": "info"
+    },
+    {
+      "text": "The repo is a git working tree (git log in /srv/munki_repo) and MunkiWebAdmin2 is configured to auto-commit manifest/pkginfo edits, so changes are recoverable.",
+      "type": "info"
+    }
+  ]
+}
