@@ -16,7 +16,7 @@ update_os
 msg_info "Installing Dependencies"
 $STD apt install -y \
   git \
-  nginx
+  caddy
 msg_ok "Installed Dependencies"
 
 # 3.11, not 3.12: mwa2's pkgsinfo_extras templatetag still imports distutils,
@@ -168,63 +168,59 @@ EOF
 systemctl enable -q --now munkiwebadmin
 msg_ok "Created Service"
 
-msg_info "Configuring Nginx"
-cat <<'EOF' >/etc/nginx/sites-available/munki-repo.conf
-server {
-  listen 80 default_server;
-  server_name _;
+msg_info "Configuring Caddy"
+cat <<'EOF' >/etc/caddy/Caddyfile
+:80 {
+	handle / {
+		header Content-Type text/plain
+		respond `Munki repo. Point ManagedInstalls SoftwareRepoURL at http://<this-ip>/repo
+Web admin: http://<this-ip>:8081/
+` 200
+	}
 
-  location = / {
-    default_type text/plain;
-    return 200 "Munki repo. Point ManagedInstalls SoftwareRepoURL at http://<this-ip>/repo\nWeb admin: http://<this-ip>:8081/\n";
-  }
+	handle /repo {
+		redir /repo/ 301
+	}
 
-  location = /repo {
-    return 301 /repo/;
-  }
-
-  location /repo/ {
-    alias /srv/munki_repo/;
-  }
+	handle_path /repo/* {
+		root * /srv/munki_repo
+		file_server
+	}
 }
 
-server {
-  listen 8081 default_server;
-  server_name _;
+:8081 {
+	request_body {
+		max_size 200MB
+	}
 
-  client_max_body_size 200M;
+	handle_path /static/* {
+		root * /opt/munkiwebadmin/munkiwebadmin/collected_static
+		file_server
+	}
 
-  location /static/ {
-    alias /opt/munkiwebadmin/munkiwebadmin/collected_static/;
-  }
+	handle_path /media/* {
+		root * /srv/munki_repo/icons
+		file_server
+	}
 
-  location /media/ {
-    alias /srv/munki_repo/icons/;
-  }
-
-  location / {
-    proxy_pass http://127.0.0.1:8090;
-    proxy_http_version 1.1;
-    proxy_set_header Host $http_host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    # mwa2's "Rebuild catalogs" view blocks synchronously in-request until
-    # makecatalogs exits, with no streaming; nginx's 60s default read timeout
-    # would otherwise cut the connection mid-rebuild (matches gunicorn's own
-    # --timeout 600 in munkiwebadmin.service).
-    proxy_connect_timeout 300s;
-    proxy_send_timeout 600s;
-    proxy_read_timeout 600s;
-  }
+	# mwa2's "Rebuild catalogs" view blocks synchronously in-request until
+	# makecatalogs exits, with no streaming. Caddy's response_header_timeout
+	# defaults to unlimited, but this pins it explicitly to match gunicorn's
+	# own --timeout 600 in munkiwebadmin.service. Unlike nginx, Caddy forwards
+	# the original Host header unchanged by default, so no manual header_up
+	# fix (see git blame on the old nginx config) is needed here.
+	reverse_proxy 127.0.0.1:8090 {
+		transport http {
+			dial_timeout 300s
+			response_header_timeout 600s
+		}
+	}
 }
 EOF
-ln -sf /etc/nginx/sites-available/munki-repo.conf /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-$STD nginx -t
-systemctl enable -q --now nginx
-systemctl reload nginx
-msg_ok "Configured Nginx"
+$STD caddy validate --config /etc/caddy/Caddyfile
+systemctl enable -q --now caddy
+systemctl reload caddy
+msg_ok "Configured Caddy"
 
 motd_ssh
 customize
