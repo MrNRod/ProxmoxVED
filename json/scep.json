@@ -1,0 +1,53 @@
+{
+  "name": "SCEP",
+  "slug": "scep",
+  "categories": [
+    6
+  ],
+  "date_created": "2026-08-15",
+  "type": "ct",
+  "updateable": true,
+  "privileged": false,
+  "architectures": ["amd64"],
+  "interface_port": 8080,
+  "documentation": "https://github.com/micromdm/scep#readme",
+  "website": "https://github.com/micromdm/scep",
+  "repository": "https://github.com/micromdm/scep",
+  "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/step-ca.webp",
+  "description": "A SCEP (Simple Certificate Enrollment Protocol) server, built on the micromdm/scep reference implementation. Apple MDM enrollment relies on a SCEP CA to issue the per-device identity certificate a device presents to the MDM server on every check-in, so this pairs with an MDM server such as NanoHUB (its -ca flag needs the CA certificate this generates). Install creates a new CA, encrypted with a random password, and enforces a random SCEP challenge password on enrollment requests.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/scep.sh",
+      "config_path": "/opt/scep_data/scep.env",
+      "resources": {
+        "cpu": 1,
+        "ram": 256,
+        "hdd": 2,
+        "os": "Debian",
+        "version": "13"
+      }
+    }
+  ],
+  "default_credentials": {
+    "username": null,
+    "password": "CA key password and SCEP challenge password are generated during installation, see /opt/scep_data/scep.env"
+  },
+  "notes": [
+    {
+      "text": "The generated CA is self-signed and its private key (/opt/scep_data/depot/ca.key) is only as safe as this container - back it up and restrict access to it, since it can issue a trusted certificate for anyone who requests one with the challenge password.",
+      "type": "warning"
+    },
+    {
+      "text": "Feed /opt/scep_data/depot/ca.pem to your MDM server's CA trust store (e.g. NanoHUB's -ca / NANOHUB_CA) and put the SCEP_CHALLENGE_PASSWORD from /opt/scep_data/scep.env into the enrollment profile's SCEP payload Challenge field.",
+      "type": "info"
+    },
+    {
+      "text": "No linux-arm64 binary is published upstream (only linux-amd64 and 32-bit linux-arm), so this only installs on amd64.",
+      "type": "info"
+    }
+  ],
+  "app_vars": [
+    { "name": "var_ca_cn", "label": "CA Common Name", "type": "text", "default": "MICROMDM SCEP CA" }
+  ]
+}
