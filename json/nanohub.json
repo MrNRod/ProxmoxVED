@@ -1,0 +1,53 @@
+{
+  "name": "NanoHUB",
+  "slug": "nanohub",
+  "categories": [
+    9
+  ],
+  "date_created": "2026-08-15",
+  "type": "ct",
+  "updateable": true,
+  "privileged": false,
+  "interface_port": 9004,
+  "documentation": "https://github.com/micromdm/nanohub/blob/main/docs/operations-guide.md",
+  "website": "https://github.com/micromdm/nanohub",
+  "repository": "https://github.com/micromdm/nanohub",
+  "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/apple.webp",
+  "description": "NanoHUB adapts and unifies NanoMDM, NanoCMD, and KMFDDM into a single Apple MDM server binary, exposing MDM check-in/command endpoints plus their combined REST APIs (push, workflows, DDM declarations) behind one HTTP listener. This installs the reference nanohub server with file-based storage, generating a random API key for HTTP Basic Auth on the API endpoints.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/nanohub.sh",
+      "config_path": "/opt/nanohub_data/nanohub.env",
+      "resources": {
+        "cpu": 1,
+        "ram": 512,
+        "hdd": 2,
+        "os": "Debian",
+        "version": "13"
+      }
+    }
+  ],
+  "default_credentials": {
+    "username": "nanohub",
+    "password": "Generated during installation, see /opt/nanohub_data/nanohub.env"
+  },
+  "notes": [
+    {
+      "text": "This gets the reference NanoHUB server running with file-based storage and a random API key. It does not configure an MDM CA certificate, APNs push certificate, or ABM/ASM/DEP tokens - those are required before real devices can enroll. Edit /opt/nanohub_data/nanohub.env (adds flags via systemd Environment/EnvironmentFile) and see the Operations Guide for -ca, -intermediate, and push configuration, then run 'systemctl restart nanohub'.",
+      "type": "warning"
+    },
+    {
+      "text": "For the CA certificate needed by -ca / NANOHUB_CA, install the companion SCEP script (json/scep.json, micromdm/scep) - it generates a CA and issues the device identity certificates NanoHUB authenticates enrollments against.",
+      "type": "info"
+    },
+    {
+      "text": "The API endpoints (/api/v1/nanomdm/, /api/v1/nanocmd/, /api/v1/ddm/) use HTTP Basic Auth with username 'nanohub' and the generated API key as the password.",
+      "type": "info"
+    },
+    {
+      "text": "File storage keeps all enrollment/command state under /opt/nanohub_data/db. For multi-node deployments, NanoHUB also supports a MySQL 8.0.19+ backend, but it requires manually creating the NanoMDM, NanoCMD, and KMFDDM schemas yourself - not set up by this script.",
+      "type": "info"
+    }
+  ]
+}
