@@ -1,0 +1,58 @@
+{
+  "name": "Squirrel",
+  "slug": "squirrel",
+  "categories": [
+    9
+  ],
+  "date_created": "2026-08-15",
+  "type": "ct",
+  "updateable": true,
+  "privileged": false,
+  "architectures": ["amd64", "arm64"],
+  "interface_port": 443,
+  "documentation": "https://github.com/micromdm/squirrel#readme",
+  "website": "https://github.com/micromdm/squirrel",
+  "repository": "https://github.com/micromdm/squirrel",
+  "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/munki.webp",
+  "description": "Squirrel is a simple, self-contained HTTPS server for a munki software repository, with built-in TLS (Let's Encrypt or a supplied certificate) and HTTP Basic Authentication for the /repo/ endpoint. This installs Squirrel built from source alongside a fresh, empty munki repo skeleton (pkgs/pkgsinfo/catalogs/manifests) served over HTTPS with a self-signed certificate. There is no web admin UI here (unlike Munki-Repo/MunkiWebAdmin2) - manage the repo's contents with munkiimport/MunkiAdmin from a Mac or by editing files directly.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/squirrel.sh",
+      "config_path": "/etc/squirrel/squirrel.env",
+      "resources": {
+        "cpu": 2,
+        "ram": 1024,
+        "hdd": 8,
+        "os": "Debian",
+        "version": "13"
+      }
+    }
+  ],
+  "default_credentials": {
+    "username": "squirrel",
+    "password": "Generated during installation, saved in /etc/squirrel/squirrel.env"
+  },
+  "notes": [
+    {
+      "text": "Squirrel's own client is HTTP Basic Auth over TLS, with a self-signed certificate by default. Accept the certificate warning once, or replace /etc/squirrel/certs/{cert,key}.pem with your own and restart the service, or switch to Let's Encrypt by editing -tls-domain in /etc/systemd/system/squirrel.service (requires a public DNS name and port 443 reachable from the internet).",
+      "type": "warning"
+    },
+    {
+      "text": "The basic-auth password is generated during install and stored in /etc/squirrel/squirrel.env (SQUIRREL_BASIC_AUTH). The matching Authorization header for the munki client is also printed to the journal on every service start: journalctl -u squirrel -n 20.",
+      "type": "info"
+    },
+    {
+      "text": "The repo starts empty. Add packages with munkiimport or MunkiAdmin from a Mac (point it at /srv/munki_repo over rsync/scp/sshfs) and run makecatalogs there, since there is no in-container tooling to build catalogs.",
+      "type": "info"
+    },
+    {
+      "text": "Upstream (micromdm/squirrel) has had no tagged release since 2017 and no commits since 2021; this installs from the master branch, which is the only version with go.mod and the current cmd/squirrel flag set. Treat it as effectively unmaintained.",
+      "type": "warning"
+    },
+    {
+      "text": "Squirrel also supports S3 and GCS as repo storage backends via the -provider flag; the default install uses the local filesystem at /srv/munki_repo.",
+      "type": "info"
+    }
+  ]
+}
