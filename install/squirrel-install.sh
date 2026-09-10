@@ -59,17 +59,9 @@ export CGO_ENABLED=0
 $STD go build -o /opt/squirrel/squirrel ./cmd/squirrel
 msg_ok "Built Squirrel"
 
-msg_info "Generating SSL Certificate"
-mkdir -p /etc/squirrel/certs
-openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-  -keyout /etc/squirrel/certs/key.pem \
-  -out /etc/squirrel/certs/cert.pem \
-  -subj "/C=US/ST=State/L=City/O=Squirrel/CN=${LOCAL_IP}" \
-  -addext "subjectAltName=IP:${LOCAL_IP},DNS:localhost,IP:127.0.0.1" \
-  2>/dev/null
-chmod 600 /etc/squirrel/certs/key.pem
-chmod 644 /etc/squirrel/certs/cert.pem
-msg_ok "Generated SSL Certificate"
+msg_info "Generating Self-Signed Certificate"
+create_self_signed_cert "squirrel"
+msg_ok "Generated Self-Signed Certificate"
 
 msg_info "Configuring Squirrel"
 cat <<EOF >/etc/squirrel/squirrel.env
@@ -89,7 +81,7 @@ Type=simple
 User=root
 EnvironmentFile=/etc/squirrel/squirrel.env
 WorkingDirectory=/opt/squirrel
-ExecStart=/opt/squirrel/squirrel serve -repo=/srv/munki_repo -tls=true -tls-cert=/etc/squirrel/certs/cert.pem -tls-key=/etc/squirrel/certs/key.pem
+ExecStart=/opt/squirrel/squirrel serve -repo=/srv/munki_repo -tls=true -tls-cert=/etc/ssl/squirrel/squirrel.crt -tls-key=/etc/ssl/squirrel/squirrel.key
 Restart=on-failure
 RestartSec=5
 

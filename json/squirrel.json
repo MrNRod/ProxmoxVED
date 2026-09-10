@@ -35,7 +35,7 @@
   },
   "notes": [
     {
-      "text": "Squirrel's own client is HTTP Basic Auth over TLS, with a self-signed certificate by default. Accept the certificate warning once, or replace /etc/squirrel/certs/{cert,key}.pem with your own and restart the service, or switch to Let's Encrypt by editing -tls-domain in /etc/systemd/system/squirrel.service (requires a public DNS name and port 443 reachable from the internet).",
+      "text": "Squirrel's own client is HTTP Basic Auth over TLS, with a self-signed certificate by default. Accept the certificate warning once, or replace /etc/ssl/squirrel/squirrel.{crt,key} with your own and restart the service, or switch to Let's Encrypt by editing -tls-domain in /etc/systemd/system/squirrel.service (requires a public DNS name and port 443 reachable from the internet).",
       "type": "warning"
     },
     {
