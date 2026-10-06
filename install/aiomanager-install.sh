@@ -37,7 +37,8 @@ msg_ok "Configured AIOManager"
 msg_info "Building AIOManager"
 cd /opt/aiomanager
 $STD npm ci
-$STD npm --prefix server ci --omit=dev
+$STD npm --prefix server ci --omit=dev --ignore-scripts=false --dangerously-allow-all-scripts
+$STD node --input-type=module -e 'import Database from "./server/node_modules/better-sqlite3/lib/index.js"; const db = new Database(":memory:"); db.prepare("SELECT 1").get(); db.close();'
 $STD npm run build
 msg_ok "Built AIOManager"
 
